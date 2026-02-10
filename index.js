@@ -35,7 +35,10 @@ app.post("/bfhl", async (req, res) => {
         if (key === "fibonacci") {
             const n = body.fibonacci
             if (!Number.isInteger(n) || n < 0) {
-                throw new Error()
+                return res.status(400).json({
+                    is_success: false,
+                    official_email: email
+                })
             }
 
             let a = 0
@@ -59,7 +62,10 @@ app.post("/bfhl", async (req, res) => {
         if (key === "prime") {
             const arr = body.prime
             if (!Array.isArray(arr)) {
-                throw new Error()
+                return res.status(400).json({
+                    is_success: false,
+                    official_email: email
+                })
             }
 
             const result = []
@@ -76,9 +82,7 @@ app.post("/bfhl", async (req, res) => {
                     }
                 }
 
-                if (isPrime) {
-                    result.push(x)
-                }
+                if (isPrime) result.push(x)
             }
 
             return res.status(200).json({
@@ -91,7 +95,10 @@ app.post("/bfhl", async (req, res) => {
         if (key === "lcm") {
             const arr = body.lcm
             if (!Array.isArray(arr) || arr.length === 0) {
-                throw new Error()
+                return res.status(400).json({
+                    is_success: false,
+                    official_email: email
+                })
             }
 
             const gcd = (a, b) => {
@@ -104,7 +111,6 @@ app.post("/bfhl", async (req, res) => {
             }
 
             let ans = arr[0]
-
             for (let i = 1; i < arr.length; i++) {
                 ans = (ans * arr[i]) / gcd(ans, arr[i])
             }
@@ -119,7 +125,10 @@ app.post("/bfhl", async (req, res) => {
         if (key === "hcf") {
             const arr = body.hcf
             if (!Array.isArray(arr) || arr.length === 0) {
-                throw new Error()
+                return res.status(400).json({
+                    is_success: false,
+                    official_email: email
+                })
             }
 
             const gcd = (a, b) => {
@@ -132,7 +141,6 @@ app.post("/bfhl", async (req, res) => {
             }
 
             let ans = arr[0]
-
             for (let i = 1; i < arr.length; i++) {
                 ans = gcd(ans, arr[i])
             }
@@ -144,69 +152,59 @@ app.post("/bfhl", async (req, res) => {
             })
         }
 
-if (key === "AI") {
-    const question = body.AI
+        if (key === "AI") {
+            const question = body.AI
 
-    if (typeof question !== "string" || question.trim().length === 0) {
-        return res.status(400).json({
-            is_success: false,
-            official_email: email
-        })
-    }
-
-    try {
-        const response = await axios.post(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-            {
-                contents: [
-                    {
-                        parts: [
-                            { text: question }
-                        ]
-                    }
-                ]
-            },
-            {
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                timeout: 8000
+            if (typeof question !== "string" || question.trim().length === 0) {
+                return res.status(400).json({
+                    is_success: false,
+                    official_email: email
+                })
             }
-        )
 
-        const candidates = response.data?.candidates
+            try {
+                const response = await axios.post(
+                    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+                    {
+                        contents: [
+                            {
+                                parts: [
+                                    {
+                                        text: `Answer in exactly one word only. No punctuation. No explanation.\n\nQuestion: ${question}`
+                                    }
+                                ]
+                            }
+                        ]
+                    },
+                    {
+                        headers: { "Content-Type": "application/json" },
+                        timeout: 8000
+                    }
+                )
 
-        if (
-            candidates &&
-            candidates.length > 0 &&
-            candidates[0].content &&
-            candidates[0].content.parts &&
-            candidates[0].content.parts[0] &&
-            candidates[0].content.parts[0].text
-        ) {
-            const text = candidates[0].content.parts[0].text
-            const answer = text.trim().split(/\s+/)[0]
+                const text = response.data?.candidates?.[0]?.content?.parts?.[0]?.text
+                if (text) {
+                    const answer = text.trim().split(/\s+/)[0]
+                    return res.status(200).json({
+                        is_success: true,
+                        official_email: email,
+                        data: answer
+                    })
+                }
 
-            return res.status(200).json({
-                is_success: true,
-                official_email: email,
-                data: answer
-            })
+                return res.status(200).json({
+                    is_success: true,
+                    official_email: email,
+                    data: "Unavailable"
+                })
+            } catch {
+                return res.status(200).json({
+                    is_success: true,
+                    official_email: email,
+                    data: "Unavailable"
+                })
+            }
         }
-
-        return res.status(200).json({
-            is_success: true,
-            official_email: email,
-            data: "Unavailable"
-        })
-    } catch {
-        return res.status(200).json({
-            is_success: true,
-            official_email: email,
-            data: "Unavailable"
-        })
-    }
-}
 
         return res.status(400).json({
             is_success: false,
@@ -221,6 +219,4 @@ if (key === "AI") {
 })
 
 const PORT = process.env.PORT || 3000
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`)
-})
+app.listen(PORT)
